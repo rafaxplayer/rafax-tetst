@@ -1,0 +1,126 @@
+/* Encapsular todo dentro de .rafax-tests */
+.rafax-tests {
+  font-family: Arial, sans-serif;
+  max-width: 800px;
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Títulos */
+.rafax-tests h1,
+.rafax-tests h2 {
+  color: #0073aa;
+  border-bottom: 2px solid #0073aa;
+  padding-bottom: 5px;
+}
+
+/* Formularios */
+.rafax-tests form {
+  margin-bottom: 30px;
+}
+
+.rafax-tests form label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.rafax-tests form input[type="text"],
+.rafax-tests form textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.rafax-tests form button {
+  background-color: #0073aa;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.rafax-tests form button:hover {
+  background-color: #005a87;
+}
+
+/* Tablas */
+.rafax-tests table.rafax-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.rafax-tests table.rafax-table th {
+  background-color: #f1f1f1;
+  color: #333;
+  padding: 10px;
+  text-align: left;
+}
+
+.rafax-tests table.rafax-table td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.rafax-tests table.rafax-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+/* Botones */
+.rafax-tests .button {
+  background-color: #0073aa;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 13px;
+  font-weight: bold;
+  border: none;
+}
+
+.rafax-tests .button:hover {
+  background-color: #005a87;
+}
+
+.rafax-tests .button-secondary {
+  background-color: #d63638;
+  color: #fff;
+}
+
+.rafax-tests .button-secondary:hover {
+  background-color: #a82c2e;
+}
+
+/* Diseño responsivo */
+@media (max-width: 768px) {
+  .rafax-tests {
+    padding: 10px;
+  }
+
+  .rafax-tests form input[type="text"],
+  .rafax-tests form textarea {
+    font-size: 13px;
+  }
+
+  .rafax-tests table.rafax-table th,
+  .rafax-tests table.rafax-table td {
+    font-size: 12px;
+  }
+
+  .rafax-tests .button {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+}
