@@ -37,11 +37,14 @@
 
 [id^="rafax_test_"] .show_results span {
   font-weight: 600;
+  font-size: 18px;
+  vertical-align: middle;
 }
 
 [id^="rafax_test_"] .result-icon {
   width: 20px;
   height: 20px;
+  margin-left: 5px;
   vertical-align: middle;
 }
 [id^="rafax_test_"] .question-page .result-icon {

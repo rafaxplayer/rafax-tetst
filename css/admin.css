@@ -124,3 +124,22 @@
     padding: 5px 10px;
   }
 }
+.rafax-tests .pagination {
+    margin-top: 20px;
+    text-align: center;
+}
+.rafax-tests .pagination a,.rafax-tests .pagination .current {
+    margin: 0 5px;
+    padding: 5px 10px;
+    background: #007cba;
+    color: white;
+    text-decoration: none;
+    border-radius: 3px;
+}
+.rafax-tests .pagination a:hover {
+    background: #005a99;
+}
+.rafax-tests .pagination .current {
+    background: #555;
+    pointer-events: none;
+}

@@ -251,59 +251,82 @@ class RafaxTests
                 <?php
     }
     // rendirzar lista de tests en el admin
-    function render_list_tests($tests)
-    {
-        $admin_url = esc_url(admin_url('admin-post.php'));
+    function render_list_tests($tests) {
+    $admin_url = esc_url(admin_url('admin-post.php'));
+
+    // Configuración de paginación
+    $items_per_page = 10; // Número de elementos por página
+    $current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1; // Página actual desde la URL
+    $total_items = count($tests); // Total de tests
+    $total_pages = ceil($total_items / $items_per_page); // Total de páginas
+
+    // Dividir tests según la página actual
+    $offset = ($current_page - 1) * $items_per_page;
+    $paged_tests = array_slice($tests, $offset, $items_per_page);
+
+    ?>
+    <h2>Tests Creados</h2>
+    <?php if (!empty($paged_tests)): ?>
+        <table class="widefat fixed">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Shortcode</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($paged_tests as $key => $test): ?>
+                    <tr>
+                        <td><?php echo esc_html($test['name']); ?></td>
+                        <td class="text_shortcode" data-id="<?php echo esc_attr($key); ?>">
+                            <?php echo sprintf(
+                                '[rafax_test id="%s" items_per_page="%s" show_results="%s" result_messages="%s" style="%s"]',
+                                esc_attr($key),
+                                esc_attr($test['count']),
+                                esc_attr($test['showresults']),
+                                esc_attr($test['showmessages']),
+                                esc_attr($test['style'])
+                            );
+                            ?>
+                        </td>
+                        <td>
+                            <a href="<?php echo esc_url(admin_url('admin.php?page=rafax-tests&edit=' . esc_attr($key))); ?>" class="button">Editar</a>
+                            <form method="post" action="<?php echo $admin_url; ?>" style="display:inline;">
+                                <input type="hidden" name="action" value="delete_test">
+                                <input type="hidden" name="test_id" value="<?php echo esc_attr($key); ?>">
+                                <?php wp_nonce_field('delete_test_action', 'delete_test_nonce'); ?>
+                                <button type="submit" class="button button-secondary button-delete"
+                                    onclick="return confirm('¿Estás seguro de eliminar este test?');">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+			<p class="message" style="color: green; display: none;">¡Shortcode copiado!</p>
+        </table>
+
+        <?php
+        // Mostrar enlaces de paginación
+        $pagination_args = [
+            'base' => add_query_arg('paged', '%#%'),
+            'format' => '&paged=%#%',
+            'current' => $current_page,
+            'total' => $total_pages,
+            'prev_text' => __('&laquo; Anterior', 'rafax-cluster'),
+            'next_text' => __('Siguiente &raquo;', 'rafax-cluster'),
+        ];
+        echo '<div class="pagination">';
+        echo paginate_links($pagination_args);
+        echo '</div>';
         ?>
-                <h2>Tests Creados</h2>
-                <?php if (!empty($tests)): ?>
-                    <table class="widefat fixed">
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Shortcode</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($tests as $key => $test): ?>
-                                <tr>
-                                    <td><?php echo esc_html($test['name']); ?></td>
-                                    <td>
-                                        <?php echo sprintf(
-                                            '[rafax_test id="%s" items_per_page="%s" show_results="%s" result_messages="%s" style="%s"]',
-                                            esc_attr($key),
-                                            esc_attr($test['count']),
-                                            esc_attr($test['showresults']),
-                                            esc_attr($test['showmessages']),
-                                            esc_attr($test['style'])
-                                        );
-                                        ?>
-                                    </td>
-                                    <td>
-                                        <a href="<?php echo esc_url(admin_url('admin.php?page=rafax-tests&edit=' . esc_attr($key))); ?>"
-                                            class="button">Editar</a>
-                                        <form method="post" action="<?php echo $admin_url; ?>" style="display:inline;">
-                                            <input type="hidden" name="action" value="delete_test">
-                                            <input type="hidden" name="test_id" value="<?php echo esc_attr($key); ?>">
-                                            <?php wp_nonce_field('delete_test_action', 'delete_test_nonce'); ?>
-                                            <button type="submit" class="button button-secondary button-delete"
-                                                onclick="return confirm('¿Estás seguro de eliminar este test?');">Eliminar</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php else: ?>
-                    <p>No hay tests creados aún.</p>
-                <?php endif; ?>
-            </div>
-            <?php
+    <?php else: ?>
+        <p>No hay tests creados aún.</p>
+    <?php endif;
+}
 
-    }
 
-    //rendirzar css htmls
+    //renderizar css htmls
     public function render_css_page()
     {
         $css_code = get_option($this->option_css_name, '');
@@ -345,7 +368,11 @@ class RafaxTests
 
         // Validar JSON
         $decoded_data = json_decode($test_data, true);
-        $decoded_messages = json_decode($test_messages, true);
+        // si se ha establecido que tenga mensajes
+        if ($test_messages) {
+            $decoded_messages = json_decode($test_messages, true);
+        }
+        
         if (json_last_error() !== JSON_ERROR_NONE) {
             wp_die('El formato de las preguntas y respuestas o de mensajes no es válido. Por favor, verifica el JSON.');
         }
@@ -454,7 +481,6 @@ class RafaxTests
     public function render_test_shortcode($atts)
     {
 
-        ///////// FALTA IMPLEMENTAR TEST TYPO MENSAJES //////////
         $atts = shortcode_atts([
             'id' => '',
             'items_per_page' => 4, // Número predeterminado de preguntas por página
@@ -483,14 +509,16 @@ class RafaxTests
 
         // Decodificar JSON y manejar errores
         $test_data = json_decode($tests[$test_id]['data'], true);
-        $test_messages = json_decode($tests[$test_id]['messages'], true);
+
+        if($tests[$test_id]['messages']){
+
+            $test_messages = json_decode($tests[$test_id]['messages'], true);
+        }
 
         if (!$test_data || !is_array($test_data)) {
             return 'Datos del test no válidos o vacíos.';
         }
-        if (!$test_messages || !is_array($test_messages)) {
-            return 'Mensajes de resultado no válidos o vacíos.';
-        }
+        
 
         if (json_last_error() !== JSON_ERROR_NONE) {
             return 'Datos del test inválidos: ' . json_last_error_msg();
@@ -506,8 +534,7 @@ class RafaxTests
                 <div class="show_results"><img class="result-icon" src="<?php echo $icon_clock ?>"><span
                         id="elapsed-time">00:00:00</span>
                     <?php if ($show_results == "yes" && $result_messages == 'no'): ?>
-                        <img class="result-icon" src="<?php echo $icon_ok ?>"><span
-                            id="<?php echo $unique_id; ?>-correct">0</span><img class="result-icon"
+                        <img class="result-icon" src="<?php echo $icon_ok ?>"><span id="<?php echo $unique_id; ?>-correct">0</span><img class="result-icon"
                             src="<?php echo $icon_fail; ?>"><span id="<?php echo $unique_id; ?>-incorrect">0</span>
                     <?php endif; ?>
                     <img class="result-icon" src="<?php echo $icon_pages ?>">
@@ -574,8 +601,6 @@ class RafaxTests
                     const showResults = '<?php echo $show_results; ?>';
                     const result_messages = '<?php echo $result_messages; ?>';
 
-
-
                     console.log(messages, Array.isArray(messages));
 
                     function showPage(page) {
@@ -628,7 +653,7 @@ class RafaxTests
 
                         // Validar la respuesta
                         const isCorrect = selectedValue == <?php echo json_encode(array_column($test_data, 'correct')); ?>[questionIndex];
-                        if (showResults == "yes") {
+                        if (showResults == "yes" && result_messages=='no') {
                             // Agregar íconos
                             const icon = isCorrect ? iconOk : iconFail;
                             $(this).parent().append(`<img src="${icon}" alt="${isCorrect ? 'Correcto' : 'Incorrecto'}" class="result-icon">`);
