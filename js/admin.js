@@ -1,7 +1,7 @@
 jQuery(document).ready(function ($) {
 
     $('#test_is_messages').change(function () {
-        console.log('change');
+        
         if ($(this).is(':checked')) {
             $('#test_messages').parent().show();
         } else {
@@ -13,6 +13,7 @@ jQuery(document).ready(function ($) {
     if ($('#test_is_messages').is(':checked')) {
         $('#test_messages').parent().show();
     }
+    
 
     $(".text_shortcode").on("click", function () {
         // Obtener el contenido del <td>

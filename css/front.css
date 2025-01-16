@@ -25,7 +25,10 @@
   font-weight: 500;
   padding: 5px;
   color: #413e3e;
-  animation: all ;
+  animation: all;
+}
+[id^="rafax_test_"] .show_results{
+  margin-bottom: 30px;
 }
 
 [id^="rafax_test_"] .show_results,
@@ -50,26 +53,68 @@
 [id^="rafax_test_"] .question-page .result-icon {
   margin-left: 10px;
 }
+[id^="rafax_test_"] .test-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+[id^="rafax_test_"] .test-index a {
+  display: block;
+  width: 35px;
+  height: 35px;
+  text-align: center;
+  color: #333;
+  padding: 5px 8px;
+  background-color: #cac6c6c4;
+}
+[id^="rafax_test_"] .test-index a:hover {
+  background-color: #919090;
+}
+[id^="rafax_test_"] .test-index a.current {
+  background-color: #333;
+  color: #fff;
+}
+/* Estilos para el fondo del popup */
+[id^="rafax_test_"] .popup-back {
+  display: none; /* Ocultar por defecto */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Fondo semitransparente */
+  z-index: 1000;
+}
+
+/* Estilos para el contenido del popup */
+
+[id^="rafax_test_"] .test-result {
+  position: absolute;
+  background-color: white;
+  text-align: center;
+  padding: 0 20px 20px 20px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 18px;
+  border: 2px solid #173c7b;
+  box-shadow: 1px 1px 20px 8px #333;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
 [id^="rafax_test_"] .test-result .result-icon {
   width: 40px;
   height: 40px;
   margin-right: 10px;
 }
 
-[id^="rafax_test_"] .test-result {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 20px;
-  font-size: 18px;
-
-  border: 1px solid #e8e8e8;
-  font-weight: 600;
-}
-
-[id^="rafax_test_"] .pagination-controls {
-}
-[id^="rafax_test_"] .pagination-controls button {
+[id^="rafax_test_"] .pagination-controls button,
+[id^="rafax_test_"] .close-btn {
   color: #fff;
   padding: 10px 20px;
   border: none;
@@ -85,11 +130,13 @@
 [id^="rafax_test_"] .button-tests:hover {
   background: #0056b3;
 }
-[id^="rafax_test_"] .button-result {
+[id^="rafax_test_"] .button-result,
+[id^="rafax_test_"] .close-btn {
   background-color: #ca1010;
 }
 
-[id^="rafax_test_"] .button-result:hover {
+[id^="rafax_test_"] .button-result:hover,
+[id^="rafax_test_"] .close-btn:hover {
   background: #f00928;
 }
 
@@ -100,6 +147,9 @@
 
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
+[id^="rafax_test_"].dark .result-icon {
+  fill: #fff;
+}
 
 [id^="rafax_test_"].dark .question-page h3 {
   color: #ffcc00;
@@ -107,7 +157,6 @@
 
 [id^="rafax_test_"].dark .question-page label {
   color: #f5f5f5;
-  
 }
 [id^="rafax_test_"].dark .question-page label:hover {
   background-color: #c5a907fb;
@@ -125,6 +174,9 @@
   background: #262626;
   border: 1px solid #444;
   color: #f5f5f5;
+}
+[id^="rafax_test_"].dark .test-index a {
+  background-color: #ffcc00;
 }
 
 [id^="rafax_test_"].dark .button-tests {
@@ -197,13 +249,10 @@
 
 [id^="rafax_test_"].minimalist .question-page label {
   color: #2b2b2b;
-  
 }
 [id^="rafax_test_"].minimalist .question-page label:hover {
   background-color: #a5a49d7e;
 }
-
-
 
 [id^="rafax_test_"].minimalist .show_results {
   background: #fafafa;
@@ -293,7 +342,6 @@
 
 [id^="rafax_test_"].modern .question-page label {
   color: #333;
-  
 }
 [id^="rafax_test_"].modern .question-page label:hover {
   background-color: #5c5afa4b;

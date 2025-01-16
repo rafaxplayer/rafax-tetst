@@ -288,12 +288,11 @@ class RafaxTests
                                     <td><?php echo esc_html($test['name']); ?></td>
                                     <td class="text_shortcode" data-id="<?php echo esc_attr($key); ?>">
                                         <?php echo sprintf(
-                                            '[rafax_test id="%s" items_per_page="%s" show_results="%s" result_messages="%s" show_index ="%s" style="%s"]',
+                                            '[rafax_test id="%s" items_per_page="%s" show_results="%s" result_messages="%s" style="%s"]',
                                             esc_attr($key),
                                             esc_attr($test['count']),
                                             esc_attr($test['showresults']),
                                             esc_attr($test['showmessages']),
-                                            esc_attr($test['showindex']),
                                             esc_attr($test['style'])
                                         );
                                         ?>
@@ -498,7 +497,7 @@ class RafaxTests
             'items_per_page' => 4, // Número predeterminado de preguntas por página
             'show_results' => 'yes',
             'result_messages' => 'no',
-            'show_index' => 'no',
+            'show_index'=>'no',
             'style' => 'default'
         ], $atts);
 
@@ -511,6 +510,7 @@ class RafaxTests
         $test_style = $atts['style'] == 'default' ? '' : $atts['style'];
         $icon_ok = plugin_dir_url(__FILE__) . 'img/ok.svg';
         $icon_fail = plugin_dir_url(__FILE__) . 'img/fail.svg';
+        $icon_clock = plugin_dir_url(__FILE__) . 'img/clock.svg';
         $icon_pages = plugin_dir_url(__FILE__) . 'img/pages.svg';
 
 
@@ -532,11 +532,11 @@ class RafaxTests
             return 'Datos del test no válidos o vacíos.';
         }
 
+
         if (json_last_error() !== JSON_ERROR_NONE) {
             return 'Datos del test inválidos: ' . json_last_error_msg();
         }
 
-        $total_pages = ceil(count($test_data) / $items_per_page);
         // Generar identificador único para esta instancia
         $unique_id = uniqid('rafax_test_');
 
@@ -544,51 +544,19 @@ class RafaxTests
         ?>
                 <div id="<?php echo $unique_id; ?>" class="<?php echo $test_style; ?> container">
 
-                    <div class="show_results"><svg class="result-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"
-                            width="24px" height="24px">
-                            <path
-                                d="M 16 4 C 9.382813 4 4 9.382813 4 16 C 4 22.617188 9.382813 28 16 28 C 22.617188 28 28 22.617188 28 16 C 28 9.382813 22.617188 4 16 4 Z M 16 6 C 21.535156 6 26 10.464844 26 16 C 26 21.535156 21.535156 26 16 26 C 10.464844 26 6 21.535156 6 16 C 6 10.464844 10.464844 6 16 6 Z M 15 8 L 15 17 L 22 17 L 22 15 L 17 15 L 17 8 Z" />
-                        </svg><span id="elapsed-time">00:00:00</span>
+                    <div class="show_results"><img class="result-icon" src="<?php echo $icon_clock ?>"><span
+                            id="elapsed-time">00:00:00</span>
                         <?php if ($show_results == "yes" && $result_messages == 'no'): ?>
-                            <svg class="result-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24px"
-                                height="24px" baseProfile="basic">
-                                <linearGradient id="ONeHyQPNLkwGmj04dE6Soa" x1="16" x2="16" y1="2.888" y2="29.012"
-                                    gradientUnits="userSpaceOnUse">
-                                    <stop offset="0" stop-color="#36eb69" />
-                                    <stop offset="1" stop-color="#1bbd49" />
-                                </linearGradient>
-                                <circle cx="16" cy="16" r="13" fill="url(#ONeHyQPNLkwGmj04dE6Soa)" />
-                                <linearGradient id="ONeHyQPNLkwGmj04dE6Sob" x1="16" x2="16" y1="3" y2="29"
-                                    gradientUnits="userSpaceOnUse">
-                                    <stop offset="0" stop-opacity=".02" />
-                                    <stop offset="1" stop-opacity=".15" />
-                                </linearGradient>
-                                <path fill="url(#ONeHyQPNLkwGmj04dE6Sob)"
-                                    d="M16,3.25c7.03,0,12.75,5.72,12.75,12.75 S23.03,28.75,16,28.75S3.25,23.03,3.25,16S8.97,3.25,16,3.25 M16,3C8.82,3,3,8.82,3,16s5.82,13,13,13s13-5.82,13-13S23.18,3,16,3 L16,3z" />
-                                <g opacity=".2">
-                                    <linearGradient id="ONeHyQPNLkwGmj04dE6Soc" x1="16.502" x2="16.502" y1="11.26" y2="20.743"
-                                        gradientUnits="userSpaceOnUse">
-                                        <stop offset="0" stop-opacity=".1" />
-                                        <stop offset="1" stop-opacity=".7" />
-                                    </linearGradient>
-                                    <path fill="url(#ONeHyQPNLkwGmj04dE6Soc)"
-                                        d="M21.929,11.26 c-0.35,0-0.679,0.136-0.927,0.384L15,17.646l-2.998-2.998c-0.248-0.248-0.577-0.384-0.927-0.384c-0.35,0-0.679,0.136-0.927,0.384 c-0.248,0.248-0.384,0.577-0.384,0.927c0,0.35,0.136,0.679,0.384,0.927l3.809,3.809c0.279,0.279,0.649,0.432,1.043,0.432 c0.394,0,0.764-0.153,1.043-0.432l6.813-6.813c0.248-0.248,0.384-0.577,0.384-0.927c0-0.35-0.136-0.679-0.384-0.927 C22.608,11.396,22.279,11.26,21.929,11.26L21.929,11.26z" />
-                                </g>
-                                <path fill="#fff"
-                                    d="M10.325,14.825L10.325,14.825c0.414-0.414,1.086-0.414,1.5,0L15,18l6.179-6.179	c0.414-0.414,1.086-0.414,1.5,0l0,0c0.414,0.414,0.414,1.086,0,1.5l-6.813,6.813c-0.478,0.478-1.254,0.478-1.732,0l-3.809-3.809	C9.911,15.911,9.911,15.239,10.325,14.825z" />
-                            </svg><span id="<?php echo $unique_id; ?>-correct">0</span><svg class="result-icon"
-                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
-                                <path fill="#f44336"
-                                    d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z" />
-                                <path fill="#fff" d="M29.656,15.516l2.828,2.828l-14.14,14.14l-2.828-2.828L29.656,15.516z" />
-                                <path fill="#fff" d="M32.484,29.656l-2.828,2.828l-14.14-14.14l2.828-2.828L32.484,29.656z" />
-                            </svg><span id="<?php echo $unique_id; ?>-incorrect">0</span>
+                            <img class="result-icon" src="<?php echo $icon_ok ?>"><span
+                                id="<?php echo $unique_id; ?>-correct">0</span><img class="result-icon"
+                                src="<?php echo $icon_fail; ?>"><span id="<?php echo $unique_id; ?>-incorrect">0</span>
                         <?php endif; ?>
                         <img class="result-icon" src="<?php echo $icon_pages ?>">
                         <span id="<?php echo $unique_id; ?>-pages">1/4</span>
                     </div>
-                    <div class="<?php echo $unique_id; ?>-results"></div>
 
+
+                    <div id="<?php echo $unique_id; ?>-results"></div>
                     <form id="<?php echo $unique_id; ?>-form">
                         <?php foreach ($test_data as $index => $question): ?>
                             <div class="question-page" data-page="<?php echo floor($index / $items_per_page); ?>"
@@ -604,6 +572,7 @@ class RafaxTests
                             </div>
                         <?php endforeach; ?>
                     </form>
+
                     <div class="pagination-controls" ??>
                         <button id="<?php echo $unique_id; ?>-prev-button" class="button-tests" type="button"
                             style="display: none;">Atrás</button>
@@ -615,31 +584,23 @@ class RafaxTests
                             style="display: none;">Mostrar
                             resultado</button>
                     </div>
-
-                    <div id="<?php echo $unique_id; ?>-test-index"
-                        style="<?php echo $show_index == 'yes' ? '' : 'display:none'; ?>" class="test-index"><br><br>
-                        <p style="flex-basis:100%"><strong>Indice de paginas</strong></p>
-                        <?php for ($i = 0; $i < $total_pages; $i++) { ?>
-                            <a href=""><?php echo $i + 1 ?></a>
-
-                        <?php } ?>
+                    
+                    <div id="<?php echo $unique_id; ?>-test-index" style="<?php echo $show_index =='yes' ? '': 'display:none';?>">
+                        Indice de paginas
                     </div>
-                    <div id="<?php echo $unique_id; ?>-popup-back" class="popup-back">
-                        <div id="<?php echo $unique_id; ?>-result" class="test-result">
-                            <h2>Resultado</h2>
-                            <div class="result-container">
-                                <p>Total preguntas: <span id="<?php echo $unique_id; ?>-tottal-count">0</span></p>
-                                <p><img class="result-icon" src="<?php echo plugin_dir_url(__FILE__) . 'img/clock.svg'; ?>"
-                                        alt="">Tiempo de
-                                    transcurrido: <span id="<?php echo $unique_id; ?>-time-count">0</span></p>
-                                <p><img class="result-icon" src="<?php echo plugin_dir_url(__FILE__) . 'img/ok.svg'; ?>"
-                                        alt="">Respuestas
-                                    correctas: <span id="<?php echo $unique_id; ?>-correct-count">0</span></p>
-                                <p><img class="result-icon" src="<?php echo plugin_dir_url(__FILE__) . 'img/fail.svg'; ?>"
-                                        alt="">Respuestas
-                                    incorrectas: <span id="<?php echo $unique_id; ?>-incorrect-count">0</span></p>
-                            </div>
-                            <button id="<?php echo $unique_id; ?>-close" class="close-btn">Cerrar</button>
+                    <div id="<?php echo $unique_id; ?>-result" class="test-result" style="display:none">
+                        <h2>Resultado</h2>
+                        <div class="result-container">
+                            <p>Total preguntas: <span id="<?php echo $unique_id; ?>-tottal-count">0</span></p>
+                            <p><img class="result-icon" src="<?php echo plugin_dir_url(__FILE__) . 'img/clock.svg'; ?>"
+                                    alt="">Tiempo de
+                                transcurrido: <span id="<?php echo $unique_id; ?>-time-count">0</span></p>
+                            <p><img class="result-icon" src="<?php echo plugin_dir_url(__FILE__) . 'img/ok.svg'; ?>"
+                                    alt="">Respuestas
+                                correctas: <span id="<?php echo $unique_id; ?>-correct-count">0</span></p>
+                            <p><img class="result-icon" src="<?php echo plugin_dir_url(__FILE__) . 'img/fail.svg'; ?>"
+                                    alt="">Respuestas
+                                incorrectas: <span id="<?php echo $unique_id; ?>-incorrect-count">0</span></p>
                         </div>
                     </div>
                 </div>
@@ -649,35 +610,27 @@ class RafaxTests
                         const uniqueId = '<?php echo $unique_id; ?>';
                         const itemsPerPage = <?php echo $items_per_page; ?>;
                         const totalQuestions = <?php echo count($test_data); ?>;
-                        const totalPages = <?php echo $total_pages; ?>;
+                        const totalPages = Math.ceil(totalQuestions / itemsPerPage);
                         let currentPage = 0;
                         const results = Array(totalQuestions).fill(null);
                         const iconOk = '<?php echo $icon_ok ?>';
                         const iconFail = '<?php echo $icon_fail ?>';
                         const messages = JSON.parse('<?php echo json_encode($test_messages); ?>');
                         const showResults = '<?php echo $show_results; ?>';
-                        let firstTime = true;
-
+                        
                         const result_messages = '<?php echo $result_messages; ?>';
-
-                        function focusTest() {
-                            $('html, body').animate({
-                                scrollTop: $('#<?php echo $unique_id; ?>').offset().top
-                            }, 2000);
-                        }
+                        
 
                         function showPage(page) {
                             $('#<?php echo $unique_id; ?> .question-page').hide();
                             $(`#<?php echo $unique_id; ?> .question-page[data-page="${page}"]`).show();
+
                             $('#<?php echo $unique_id; ?>-prev-button').toggle(page > 0);
                             $('#<?php echo $unique_id; ?>-next-button').toggle(page < totalPages - 1);
                             $('#<?php echo $unique_id; ?>-result-button').toggle(page === totalPages - 1);
                             $('#<?php echo $unique_id; ?>-repeat-button').toggle(page === totalPages - 1);
                             $('#<?php echo $unique_id; ?>-tottal-quest').text(totalQuestions);
                             $('#<?php echo $unique_id; ?>-pages').text((page + 1) + "/" + totalPages);
-                            console.log('ShowPage :' + currentPage);
-
-
                         }
 
                         function getMessage(correctAnswers, totalQuestions, messages) {
@@ -696,18 +649,14 @@ class RafaxTests
                             if (currentPage < totalPages - 1) {
                                 currentPage++;
                                 showPage(currentPage);
-                                focusTest();
                             }
-                            console.log('-next-button: ' + currentPage);
                         });
 
                         $(`#${uniqueId}-prev-button`).on('click', function () {
                             if (currentPage > 0) {
                                 currentPage--;
                                 showPage(currentPage);
-                                focusTest();
                             }
-                            console.log('-prev-button: ' + currentPage);
                         });
 
                         $(`#${uniqueId}-form input[type="radio"]`).on('change', function () {
@@ -715,12 +664,6 @@ class RafaxTests
                             const questionIndex = $(this).attr('name').split('-')[1];
                             const selectedValue = $(this).val();
                             results[questionIndex] = selectedValue;
-
-                            // comenzamos el cronometro cuando se seleciona la primera pregunta
-                            if (firstTime) {
-                                startStopwatch();
-                            };
-                            firstTime = false;
 
                             // Limpiar íconos existentes
                             $(`.question-page[data-page="${Math.floor(questionIndex / itemsPerPage)}"] .answer-option img`).remove();
@@ -731,6 +674,7 @@ class RafaxTests
                                 // Agregar íconos
                                 const icon = isCorrect ? iconOk : iconFail;
                                 $(this).parent().append(`<img src="${icon}" alt="${isCorrect ? 'Correcto' : 'Incorrecto'}" class="result-icon">`);
+
 
                                 // Si es incorrecta, marcar la opción correcta también
                                 if (!isCorrect) {
@@ -763,16 +707,6 @@ class RafaxTests
                             }
                         });
 
-                        // logica para el indice de paginas o preguntas
-                        $(`#${uniqueId}-test-index a`).on('click', function (e) {
-                            e.preventDefault();
-                            const page = $(this).text();
-                            showPage(page - 1);
-                            currentPage = page - 1;
-                            focusTest();
-                            console.log('-Index-button: ' + currentPage);
-                        });
-                        // logica para mostrar resultado
                         $(`#${uniqueId}-result-button`).on('click', function () {
                             let correct = 0, incorrect = 0, tottal = <?php echo count($test_data); ?>;
                             <?php foreach ($test_data as $index => $question): ?>
@@ -794,20 +728,10 @@ class RafaxTests
                                 $(`#${uniqueId}-time-count`).text($(`#${uniqueId} #elapsed-time`).text());
 
                             }
-                            //$(`#${uniqueId}-result`).show();
-                            console.log(`clic: #${uniqueId}-popup-back`);
-
-                            $(`#${uniqueId}-popup-back`).show();
+                            $(`#${uniqueId}-result`).show();
                             stopWatch();
                         });
 
-                        // close popup de resultados
-                        $(`#${uniqueId}-popup-back, #${uniqueId}-close`).on('click', function (e) {
-                            if (e.target.id === `${uniqueId}-popup-back` || $(e.target).hasClass("close-btn")) {
-                                $(`#${uniqueId}-popup-back`).fadeOut();
-                            }
-                        });
-                        //Logica para repetir test
                         $(`#${uniqueId}-repeat-button`).on('click', function () {
 
                             location.reload(true);
@@ -817,7 +741,7 @@ class RafaxTests
 
                         //Timer
                         let stopwatchInterval;
-                        let elapsedTime = 0;
+                        let elapsedTime = 0; // Tiempo transcurrido en segundos
 
                         function updateWatchDisplay() {
                             const hours = Math.floor(elapsedTime / 3600);
@@ -844,7 +768,7 @@ class RafaxTests
                             }, 1000);
                         }
 
-
+                        startStopwatch();
                     });
                 </script>
                 <?php
