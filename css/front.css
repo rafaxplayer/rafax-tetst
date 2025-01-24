@@ -61,8 +61,7 @@
 
 [id^="rafax_test_"] .test-index a {
   display: block;
-  width: 35px;
-  height: 35px;
+  min-width: 35px;
   text-align: center;
   color: #333;
   padding: 5px 8px;

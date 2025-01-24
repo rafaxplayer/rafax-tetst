@@ -14,7 +14,6 @@ jQuery(document).ready(function ($) {
         $('#test_messages').parent().show();
     }
     
-
     $(".text_shortcode").on("click", function () {
         // Obtener el contenido del <td>
         var text = $(this).text().trim();
@@ -44,6 +43,6 @@ jQuery(document).ready(function ($) {
         // Eliminar el elemento temporal
         $temp.remove();
     });
-
+   
 
 });
