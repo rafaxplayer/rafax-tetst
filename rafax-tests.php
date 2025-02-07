@@ -17,7 +17,7 @@ class RafaxTests
 
     public function __construct()
     {
-
+        add_action('admin_init', [$this, 'handle_combined_test_submission']);
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_post_save_test', [$this, 'save_test']);
         add_action('admin_post_delete_test', [$this, 'delete_test']);
@@ -37,7 +37,7 @@ class RafaxTests
     {
         if ($notice = get_transient('rafax_admin_notice')) {
             ?>
-            <div class="notice notice-success is-dismissible">
+            <div class="notice notice-<?php echo strpos($notice, 'Error') !== false ? 'error' : 'success'; ?> is-dismissible">
                 <p><?php echo esc_html($notice); ?></p>
             </div>
             <?php
@@ -46,18 +46,21 @@ class RafaxTests
     }
 
     //Front end CSS
-    public function enqueue_front_assets()
+    public function enqueue_front_assets($hook)
     {
 
         wp_enqueue_script('jquery');
 
         $custom_css = get_option($this->option_css_name, '');
 
-        wp_enqueue_style('rafax-tests-front-css', plugin_dir_url(__FILE__) . 'css/front.css', [], '1.0', 'all');
+        if (is_singular()) {
 
-        // Inyectar CSS personalizado
-        if ($custom_css) {
-            wp_add_inline_style('rafax-tests-front-css', $custom_css);
+            wp_enqueue_style('rafax-tests-front-css', plugin_dir_url(__FILE__) . 'css/front.css', [], '1.0', 'all');
+
+            // Inyectar CSS personalizado
+            if ($custom_css) {
+                wp_add_inline_style('rafax-tests-front-css', $custom_css);
+            }
         }
 
     }
@@ -69,11 +72,13 @@ class RafaxTests
             wp_enqueue_script('rafax-tests-admin-js', plugin_dir_url(__FILE__) . 'js/admin.js', ['jquery'], '1.0', true);
         }
     }
+
     // Admin menu
     public function add_admin_menu()
     {
         add_menu_page('Rafax Tests', 'Rafax Tests', 'manage_options', 'rafax-tests', [$this, 'admin_page'], 'dashicons-edit-large');
     }
+
     // Admin page
     public function admin_page()
     {
@@ -88,6 +93,8 @@ class RafaxTests
                     class="nav-tab <?php echo $active_tab === 'css' ? 'nav-tab-active' : ''; ?>">CSS</a>
                 <a href="?page=rafax-tests&tab=import-export"
                     class="nav-tab <?php echo $active_tab === 'import-export' ? 'nav-tab-active' : ''; ?>">Importar/Exportar</a>
+                <a href="?page=rafax-tests&tab=combine-tests"
+                    class="nav-tab <?php echo $active_tab === 'combine-tests' ? 'nav-tab-active' : ''; ?>">Combinar Tests</a>
             </h2>
 
             <?php
@@ -97,11 +104,14 @@ class RafaxTests
                 $this->css_page();
             } elseif ($active_tab === 'import-export') {
                 $this->import_export_page();
+            } elseif ($active_tab === 'combine-tests') {
+                $this->combine_tests_page(); // Nueva función para la pestaña de combinar tests
             }
             ?>
         </div><?php
 
     }
+
     /*TABS*/
     // Tab tests, selector si es para editar o crear test.
     private function tests_page()
@@ -167,7 +177,58 @@ class RafaxTests
                 <label for="test_file">Archivo JSON:</label>
                 <input type="file" name="test_file" id="test_file" accept=".json" required>
                 <br><br>
+                <label for="overwrite_tests">
+                    <input type="checkbox" name="overwrite_tests" id="overwrite_tests" value="1">
+                    Sobrescribir tests existentes
+                </label>
+                <br><br>
                 <button type="submit" class="button button-primary">Importar Tests</button>
+            </form>
+        </div>
+        <?php
+    }
+
+    // Combine page
+    private function combine_tests_page()
+    {
+        $tests = get_option($this->option_tests_name, []);
+
+        /* if (isset($_POST['submit_combined_test'])) {
+            $this->save_combined_test();
+        } */
+
+        ?>
+        <div class="rafax-tests">
+            <h2>Combinar Tests</h2>
+            <form method="post" action="">
+                <?php wp_nonce_field('combine_tests_action', 'combine_tests_nonce'); ?>
+
+                <label for="combined_test_name">Nombre del Test Combinado:</label>
+                <input type="text" name="combined_test_name" id="combined_test_name" required>
+                <br><br>
+
+                <label for="number_of_questions">Número de Preguntas:</label>
+                <input type="number" name="number_of_questions" id="number_of_questions" min="1" required>
+                <br><br>
+
+                <h3>Seleccionar Tests para Combinar:</h3>
+
+                <?php
+                if (is_array($tests)) {
+                    foreach ($tests as $test_id => $test): ?>
+                        <label>
+                            <input type="checkbox" name="selected_tests[]" value="<?php echo esc_attr($test_id); ?>">
+                            <?php echo esc_html($test['name']); ?>
+                        </label>
+                        <br>
+                    <?php endforeach;
+                } else {
+                    error_log('Error: $tests no es un array.');
+                }
+                ?>
+                <br><br>
+
+                <button type="submit" name="submit_combined_test" class="button button-primary">Crear Test Combinado</button>
             </form>
         </div>
         <?php
@@ -237,7 +298,7 @@ class RafaxTests
         $show_results_checked = $test['showresults'] === 'yes';
         $show_messages_checked = $test['showmessages'] === 'yes';
         $show_index_checked = $test['showindex'] === 'yes';
-        $test_messages = $test['messages'];
+        $test_messages = isset($test['messages']) ? $test['messages'] : '';
         $test_data = $test['data'];
         $current_style = isset($test['style']) ? $test['style'] : 'default';
         ?>
@@ -301,7 +362,7 @@ class RafaxTests
         // Configuración de paginación
         $items_per_page = 10; // Número de elementos por página
         $current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1; // Página actual desde la URL
-        $total_items = count($tests); // Total de tests
+        $total_items = is_array($tests) ? count($tests) : 0; // Total de tests
         $total_pages = ceil($total_items / $items_per_page); // Total de páginas
 
         // Dividir tests según la página actual
@@ -465,6 +526,7 @@ class RafaxTests
         wp_redirect(admin_url('admin.php?page=rafax-tests'));
         exit;
     }
+
     // Editar test
     public function edit_test()
     {
@@ -539,7 +601,7 @@ class RafaxTests
 
         if (!isset($_FILES['test_file']) || $_FILES['test_file']['error'] !== UPLOAD_ERR_OK) {
             set_transient('rafax_admin_notice', 'Error al subir el archivo.', 30);
-            wp_redirect(admin_url('admin.php?page=rafax-tests'));
+            wp_redirect(admin_url('admin.php?page=rafax-tests&tab=import-export'));
             exit;
         }
 
@@ -548,8 +610,17 @@ class RafaxTests
 
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($imported_tests)) {
             set_transient('rafax_admin_notice', 'El archivo no contiene datos válidos.', 30);
-            wp_redirect(admin_url('admin.php?page=rafax-tests'));
+            wp_redirect(admin_url('admin.php?page=rafax-tests&tab=import-export'));
             exit;
+        }
+
+        // Validar la estructura de los tests importados
+        foreach ($imported_tests as $test_id => $test_data) {
+            if (!isset($test_data['name'], $test_data['data'], $test_data['count'], $test_data['showresults'], $test_data['showmessages'], $test_data['showindex'], $test_data['style'])) {
+                set_transient('rafax_admin_notice', 'El archivo contiene datos incompletos o incorrectos.', 30);
+                wp_redirect(admin_url('admin.php?page=rafax-tests&tab=import-export'));
+                exit;
+            }
         }
 
         $existing_tests = get_option($this->option_tests_name, []);
@@ -561,7 +632,7 @@ class RafaxTests
         update_option($this->option_tests_name, $updated_tests);
 
         set_transient('rafax_admin_notice', 'Tests importados correctamente.', 30);
-        wp_redirect(admin_url('admin.php?page=rafax-tests'));
+        wp_redirect(admin_url('admin.php?page=rafax-tests&tab=import-export'));
         exit;
     }
     // Exportar test
@@ -577,7 +648,7 @@ class RafaxTests
 
         if (empty($tests)) {
             set_transient('rafax_admin_notice', 'No hay tests para exportar.', 30);
-            wp_redirect(admin_url('admin.php?page=rafax-tests'));
+            wp_redirect(admin_url('admin.php?page=rafax-tests&tab=import-export'));
             exit;
         }
 
@@ -585,18 +656,98 @@ class RafaxTests
         $json_data = json_encode($tests, JSON_PRETTY_PRINT);
 
         // Forzar la descarga del archivo
+        $filename = 'rafax-tests-export-' . date('Y-m-d-H-i-s') . '.json';
         header('Content-Type: application/json');
-        header('Content-Disposition: attachment; filename="rafax-tests-export-' . date('Y-m-d') . '.json"');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
         echo $json_data;
         exit;
     }
+
+    public function handle_combined_test_submission()
+    {
+        if (isset($_POST['submit_combined_test'])) {
+            $this->save_combined_test();
+        }
+    }
+    // save combine test
+    private function save_combined_test()
+    {
+        if (!isset($_POST['combine_tests_nonce']) || !wp_verify_nonce($_POST['combine_tests_nonce'], 'combine_tests_action')) {
+            wp_die('Nonce verification failed');
+        }
+
+
+
+        $combined_test_name = sanitize_text_field($_POST['combined_test_name']);
+        $number_of_questions = absint($_POST['number_of_questions']);
+        $selected_tests = isset($_POST['selected_tests']) ? $_POST['selected_tests'] : [];
+
+        if (empty($selected_tests) || $number_of_questions < 1) {
+            set_transient('rafax_admin_notice', 'Error: Debes seleccionar al menos un test y especificar un número válido de preguntas.', 30);
+            return;
+        }
+
+        $tests = get_option($this->option_tests_name, []);
+        $all_questions = [];
+
+        // Recopilar preguntas de los tests seleccionados
+        foreach ($selected_tests as $test_id) {
+            if (isset($tests[$test_id])) {
+                $test_data = json_decode($tests[$test_id]['data'], true);
+                if (is_array($test_data)) {
+                    $all_questions[$test_id] = $test_data; // Almacenar preguntas por test
+                }
+            }
+        }
+
+        // Verificar si hay suficientes preguntas
+        $total_questions = array_sum(array_map('count', $all_questions));
+        if ($total_questions < $number_of_questions) {
+            set_transient('rafax_admin_notice', 'Error: No hay suficientes preguntas en los tests seleccionados.', 30);
+            return;
+        }
+
+        // Distribuir preguntas de forma equitativa
+        $combined_test_data = [];
+        $questions_per_test = intval($number_of_questions / count($selected_tests));
+        $remaining_questions = $number_of_questions % count($selected_tests);
+
+        foreach ($all_questions as $test_id => $questions) {
+            shuffle($questions); // Mezclar preguntas del test actual
+            $num_to_take = $questions_per_test + ($remaining_questions-- > 0 ? 1 : 0);
+            $combined_test_data = array_merge($combined_test_data, array_slice($questions, 0, $num_to_take));
+        }
+
+        // Mezclar todas las preguntas seleccionadas
+        shuffle($combined_test_data);
+
+        // Guardar el nuevo test combinado
+        $combined_test_id = uniqid();
+        $tests[$combined_test_id] = [
+            'name' => $combined_test_name,
+            'data' => json_encode($combined_test_data),
+            'count' => $number_of_questions,
+            'showresults' => 'yes',
+            'showmessages' => 'no',
+            'showindex' => 'no',
+            'style' => 'default'
+        ];
+
+        update_option($this->option_tests_name, $tests);
+        set_transient('rafax_admin_notice', 'El test combinado se ha creado correctamente.', 30);
+
+        wp_redirect(admin_url('admin.php?page=rafax-tests&tab=tests'));
+
+
+    }
+
     // shortcode
     public function render_test_shortcode($atts)
     {
 
         $atts = shortcode_atts([
             'id' => '',
-            'items_per_page' => 4, // Número predeterminado de preguntas por página
+            'items_per_page' => 5, // Número predeterminado de preguntas por página
             'show_results' => 'yes',
             'result_messages' => 'no',
             'show_index' => 'no',
@@ -609,12 +760,10 @@ class RafaxTests
         $items_per_page = max(1, (int) $atts['items_per_page']);
         $show_results = $atts['show_results'];
         $show_index = $atts['show_index'];
-        $collapse_test = $atts['collapse_test'];
         $result_messages = $atts['result_messages'];
         $test_style = $atts['style'] == 'default' ? '' : $atts['style'];
         $icon_ok = plugin_dir_url(__FILE__) . 'img/ok.svg';
         $icon_fail = plugin_dir_url(__FILE__) . 'img/fail.svg';
-        $icon_pages = plugin_dir_url(__FILE__) . 'img/pages.svg';
 
 
         $tests = get_option($this->option_tests_name, []);
@@ -626,10 +775,9 @@ class RafaxTests
         // Decodificar JSON y manejar errores
         $test_data = json_decode($tests[$test_id]['data'], true);
 
-        if ($tests[$test_id]['messages']) {
 
-            $test_messages = json_decode($tests[$test_id]['messages'], true);
-        }
+        $test_messages = $tests[$test_id]['messages'] ? json_decode($tests[$test_id]['messages'], true) : '';
+
 
         if (!$test_data || !is_array($test_data)) {
             return 'Datos del test no válidos o vacíos.';
@@ -645,16 +793,17 @@ class RafaxTests
 
         ob_start();
         ?>
+
                 <div id="<?php echo $unique_id; ?>" class="<?php echo $test_style; ?> container">
 
-                    <div class="show_results"><svg class="result-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"
-                            width="24px" height="24px">
+                    <div class="show_results">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="result-icon">
                             <path
                                 d="M 16 4 C 9.382813 4 4 9.382813 4 16 C 4 22.617188 9.382813 28 16 28 C 22.617188 28 28 22.617188 28 16 C 28 9.382813 22.617188 4 16 4 Z M 16 6 C 21.535156 6 26 10.464844 26 16 C 26 21.535156 21.535156 26 16 26 C 10.464844 26 6 21.535156 6 16 C 6 10.464844 10.464844 6 16 6 Z M 15 8 L 15 17 L 22 17 L 22 15 L 17 15 L 17 8 Z" />
-                        </svg><span id="elapsed-time">00:00:00</span>
+                        </svg>
+                        <span id="elapsed-time">00:00:00</span>
                         <?php if ($show_results == "yes" && $result_messages == 'no'): ?>
-                            <svg class="result-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24px"
-                                height="24px" baseProfile="basic">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="result-icon" baseProfile="basic">
                                 <linearGradient id="ONeHyQPNLkwGmj04dE6Soa" x1="16" x2="16" y1="2.888" y2="29.012"
                                     gradientUnits="userSpaceOnUse">
                                     <stop offset="0" stop-color="#36eb69" />
@@ -679,13 +828,15 @@ class RafaxTests
                                 </g>
                                 <path fill="#fff"
                                     d="M10.325,14.825L10.325,14.825c0.414-0.414,1.086-0.414,1.5,0L15,18l6.179-6.179	c0.414-0.414,1.086-0.414,1.5,0l0,0c0.414,0.414,0.414,1.086,0,1.5l-6.813,6.813c-0.478,0.478-1.254,0.478-1.732,0l-3.809-3.809	C9.911,15.911,9.911,15.239,10.325,14.825z" />
-                            </svg><span id="<?php echo $unique_id; ?>-correct">0</span><svg class="result-icon"
-                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
+                            </svg>
+                            <span id="<?php echo $unique_id; ?>-correct">0</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="result-icon">
                                 <path fill="#f44336"
                                     d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z" />
                                 <path fill="#fff" d="M29.656,15.516l2.828,2.828l-14.14,14.14l-2.828-2.828L29.656,15.516z" />
                                 <path fill="#fff" d="M32.484,29.656l-2.828,2.828l-14.14-14.14l2.828-2.828L32.484,29.656z" />
-                            </svg><span id="<?php echo $unique_id; ?>-incorrect">0</span>
+                            </svg>
+                            <span id="<?php echo $unique_id; ?>-incorrect">0</span>
                         <?php endif; ?>
                         <svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
                             xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://www.w3.org/2000/svg"
@@ -694,7 +845,8 @@ class RafaxTests
                             xmlns:svg="http://www.w3.org/2000/svg" xmlns:ns1="http://sozi.baierouge.fr"
                             xmlns:xlink="http://www.w3.org/1999/xlink" id="svg1468" sodipodi:docname="paper4.svg"
                             viewBox="0 0 187.5 187.5" sodipodi:version="0.32" version="1.0" y="0" x="0" inkscape:version="0.42"
-                            sodipodi:docbase="C:\Documents and Settings\Jarno\Omat tiedostot\vanhasta\opencliparts\omat\symbols">
+                            sodipodi:docbase="C:\Documents and Settings\Jarno\Omat tiedostot\vanhasta\opencliparts\omat\symbols"
+                            class="result-icon">
                             <sodipodi:namedview id="base" bordercolor="#666666" inkscape:pageshadow="2"
                                 inkscape:window-width="704" pagecolor="#ffffff" inkscape:zoom="1.8346667" inkscape:window-x="0"
                                 borderopacity="1.0" inkscape:current-layer="svg1468" inkscape:cx="93.750002"
@@ -760,7 +912,9 @@ class RafaxTests
                     <div class="<?php echo $unique_id; ?>-results"></div>
 
                     <form id="<?php echo $unique_id; ?>-form">
-                        <?php foreach ($test_data as $index => $question): ?>
+                        <?php
+
+                        foreach ($test_data as $index => $question): ?>
                             <div class="question-page" data-page="<?php echo floor($index / $items_per_page); ?>"
                                 style="display: none;">
                                 <h3><?php echo esc_html(((int) $index + 1) . '. ' . $question['question']); ?></h3>
@@ -799,46 +953,42 @@ class RafaxTests
                             <h2>Resultado</h2>
                             <div class="result-container">
                                 <p>Total preguntas: <span id="<?php echo $unique_id; ?>-tottal-count">0</span></p>
-                                <p><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24px" height="24px">
+                                <p><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" class="result-icon">
                                         <path
-                                            d="M 16 4 C 9.382813 4 4 9.382813 4 16 C 4 22.617188 9.382813 28 16 28 C 22.617188 28 28 22.617188 28 16 C 28 9.382813 22.617188 4 16 4 Z M 16 6 C 21.535156 6 26 10.464844 26 16 C 26 21.535156 21.535156 26 16 26 C 10.464844 26 6 21.535156 6 16 C 6 10.464844 10.464844 6 16 6 Z M 15 8 L 15 17 L 22 17 L 22 15 L 17 15 L 17 8 Z" />
-                                    </svg>Tiempo de
-                                    transcurrido: <span id="<?php echo $unique_id; ?>-time-count">0</span></p>
-                                <p><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24px" height="24px"
-                                        baseProfile="basic">
-                                        <linearGradient id="ONeHyQPNLkwGmj04dE6Soa" x1="16" x2="16" y1="2.888" y2="29.012"
+                                            d="M16 4C9.383 4 4 9.383 4 16s5.383 12 12 12 12-5.383 12-12S22.617 4 16 4Zm0 2c5.535 0 10 4.465 10 10s-4.465 10-10 10S6 21.535 6 16 10.465 6 16 6Zm-1 2v9h7v-2h-5V8Z" />
+                                    </svg>Tiempo transcurrido: <span id="<?php echo $unique_id; ?>-time-count">0</span></p>
+                                <p><svg xmlns="http://www.w3.org/2000/svg" baseProfile="basic" viewBox="0 0 32 32"
+                                        class="result-icon">
+                                        <linearGradient id="a" x1="16" x2="16" y1="2.888" y2="29.012"
                                             gradientUnits="userSpaceOnUse">
                                             <stop offset="0" stop-color="#36eb69" />
                                             <stop offset="1" stop-color="#1bbd49" />
                                         </linearGradient>
-                                        <circle cx="16" cy="16" r="13" fill="url(#ONeHyQPNLkwGmj04dE6Soa)" />
-                                        <linearGradient id="ONeHyQPNLkwGmj04dE6Sob" x1="16" x2="16" y1="3" y2="29"
-                                            gradientUnits="userSpaceOnUse">
+                                        <circle cx="16" cy="16" r="13" fill="url(#a)" />
+                                        <linearGradient id="b" x1="16" x2="16" y1="3" y2="29" gradientUnits="userSpaceOnUse">
                                             <stop offset="0" stop-opacity=".02" />
                                             <stop offset="1" stop-opacity=".15" />
                                         </linearGradient>
-                                        <path fill="url(#ONeHyQPNLkwGmj04dE6Sob)"
-                                            d="M16,3.25c7.03,0,12.75,5.72,12.75,12.75 S23.03,28.75,16,28.75S3.25,23.03,3.25,16S8.97,3.25,16,3.25 M16,3C8.82,3,3,8.82,3,16s5.82,13,13,13s13-5.82,13-13S23.18,3,16,3 L16,3z" />
+                                        <path fill="url(#b)"
+                                            d="M16 3.25c7.03 0 12.75 5.72 12.75 12.75S23.03 28.75 16 28.75 3.25 23.03 3.25 16 8.97 3.25 16 3.25M16 3C8.82 3 3 8.82 3 16s5.82 13 13 13 13-5.82 13-13S23.18 3 16 3z" />
                                         <g opacity=".2">
-                                            <linearGradient id="ONeHyQPNLkwGmj04dE6Soc" x1="16.502" x2="16.502" y1="11.26"
-                                                y2="20.743" gradientUnits="userSpaceOnUse">
+                                            <linearGradient id="c" x1="16.502" x2="16.502" y1="11.26" y2="20.743"
+                                                gradientUnits="userSpaceOnUse">
                                                 <stop offset="0" stop-opacity=".1" />
                                                 <stop offset="1" stop-opacity=".7" />
                                             </linearGradient>
-                                            <path fill="url(#ONeHyQPNLkwGmj04dE6Soc)"
-                                                d="M21.929,11.26 c-0.35,0-0.679,0.136-0.927,0.384L15,17.646l-2.998-2.998c-0.248-0.248-0.577-0.384-0.927-0.384c-0.35,0-0.679,0.136-0.927,0.384 c-0.248,0.248-0.384,0.577-0.384,0.927c0,0.35,0.136,0.679,0.384,0.927l3.809,3.809c0.279,0.279,0.649,0.432,1.043,0.432 c0.394,0,0.764-0.153,1.043-0.432l6.813-6.813c0.248-0.248,0.384-0.577,0.384-0.927c0-0.35-0.136-0.679-0.384-0.927 C22.608,11.396,22.279,11.26,21.929,11.26L21.929,11.26z" />
+                                            <path fill="url(#c)"
+                                                d="M21.929 11.26c-.35 0-.679.136-.927.384L15 17.646l-2.998-2.998a1.302 1.302 0 0 0-.927-.384c-.35 0-.679.136-.927.384a1.302 1.302 0 0 0-.384.927c0 .35.136.679.384.927l3.809 3.809c.279.279.649.432 1.043.432.394 0 .764-.153 1.043-.432l6.813-6.813c.248-.248.384-.577.384-.927 0-.35-.136-.679-.384-.927a1.302 1.302 0 0 0-.927-.384z" />
                                         </g>
                                         <path fill="#fff"
-                                            d="M10.325,14.825L10.325,14.825c0.414-0.414,1.086-0.414,1.5,0L15,18l6.179-6.179	c0.414-0.414,1.086-0.414,1.5,0l0,0c0.414,0.414,0.414,1.086,0,1.5l-6.813,6.813c-0.478,0.478-1.254,0.478-1.732,0l-3.809-3.809	C9.911,15.911,9.911,15.239,10.325,14.825z" />
+                                            d="M10.325 14.825a1.061 1.061 0 0 1 1.5 0L15 18l6.179-6.179a1.061 1.061 0 0 1 1.5 1.5l-6.813 6.813a1.225 1.225 0 0 1-1.732 0l-3.809-3.809a1.061 1.061 0 0 1 0-1.5z" />
                                     </svg>Respuestas
                                     correctas: <span id="<?php echo $unique_id; ?>-correct-count">0</span></p>
-                                <p><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
+                                <p><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="result-icon">
                                         <path fill="#f44336"
-                                            d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z" />
-                                        <path fill="#fff"
-                                            d="M29.656,15.516l2.828,2.828l-14.14,14.14l-2.828-2.828L29.656,15.516z" />
-                                        <path fill="#fff"
-                                            d="M32.484,29.656l-2.828,2.828l-14.14-14.14l2.828-2.828L32.484,29.656z" />
+                                            d="M44 24c0 11.045-8.955 20-20 20S4 35.045 4 24 12.955 4 24 4s20 8.955 20 20z" />
+                                        <path fill="#fff" d="m29.656 15.516 2.828 2.828-14.14 14.14-2.828-2.828 14.14-14.14z" />
+                                        <path fill="#fff" d="m32.484 29.656-2.828 2.828-14.14-14.14 2.828-2.828 14.14 14.14z" />
                                     </svg>Respuestas
                                     incorrectas: <span id="<?php echo $unique_id; ?>-incorrect-count">0</span></p>
                             </div>
@@ -849,22 +999,23 @@ class RafaxTests
                 <script>
                     const uniqueId = '#<?php echo $unique_id; ?>';
                     const itemsPerPage = <?php echo $items_per_page; ?>;
-                    const testData = JSON.parse('<?php echo json_encode($test_data); ?>');
+                    const testData = <?php echo wp_json_encode($test_data); ?>;
                     const totalQuestions = <?php echo count($test_data); ?>;
                     const totalPages = <?php echo $total_pages; ?>;
                     const results = Array(totalQuestions).fill(null);
                     const iconOk = '<?php echo $icon_ok ?>';
                     const iconFail = '<?php echo $icon_fail ?>';
-                    const messages = JSON.parse('<?php echo json_encode($test_messages); ?>');
+                    const messages = <?php echo wp_json_encode($test_messages); ?>;
                     const showResults = '<?php echo $show_results; ?>';
                     const result_messages = '<?php echo $result_messages; ?>';
 
                     // Focalizar test al cambiar de pagina
                     function focusTest(element) {
-                        $('html, body').animate({
-                            scrollTop: $(element).offset().top
+                        jQuery('html, body').animate({
+                            scrollTop: jQuery(element).offset().top - 50
                         }, 2000);
                     }
+
                     // calculo de resultados 
                     function calculateResults(results, testData) {
                         let correct = 0, incorrect = 0;
@@ -883,20 +1034,24 @@ class RafaxTests
                     //mostrar pagina del test
                     function showPage(page) {
 
-                        $(`${uniqueId} .question-page`).hide();
-                        $(`${uniqueId} .question-page[data-page="${page}"]`).show();
-                        $(`${uniqueId}-prev-button`).toggle(page > 0);
-                        $(`${uniqueId}-next-button`).toggle(page < totalPages - 1);
-                        $(`${uniqueId}-result-button`).toggle(page === totalPages - 1);
-                        $(`${uniqueId}-repeat-button`).toggle(page === totalPages - 1);
-                        $(`${uniqueId}-tottal-quest`).text(totalQuestions);
-                        $(`${uniqueId}-pages`).text((page + 1) + "/" + totalPages);
+                        jQuery(`${uniqueId} .question-page`).hide();
+                        jQuery(`${uniqueId} .question-page[data-page="${page}"]`).show();
+                        jQuery(`${uniqueId}-prev-button`).toggle(page > 0);
+                        jQuery(`${uniqueId}-next-button`).toggle(page < totalPages - 1);
+                        jQuery(`${uniqueId}-result-button`).toggle(page === totalPages - 1);
+                        jQuery(`${uniqueId}-repeat-button`).toggle(page === totalPages - 1);
+                        jQuery(`${uniqueId}-tottal-quest`).text(totalQuestions);
+                        jQuery(`${uniqueId}-pages`).text((page + 1) + "/" + totalPages);
 
                     }
+
                     // Manejar mensajes cunado esta la opcion habilitada
                     function getMessage(correctAnswers, totalQuestions, messages) {
                         // Calcula el porcentaje de aciertos
                         const percentage = (correctAnswers / totalQuestions) * 100;
+                        if (!messages) {
+                            return "Este test no tiene mensajes .";
+                        }
 
                         // Busca el rango adecuado en los mensajes
                         const message = messages.find(m => percentage >= m.min && percentage <= m.max);
@@ -949,24 +1104,12 @@ class RafaxTests
                             const isCorrect = selectedValue == correctAnswer;
 
                             if (showResults == "yes" && result_messages == 'no') {
-                                // Agregar íconos
-                                const icon = isCorrect ? iconOk : iconFail;
-                                $(this).parent().append(`<img src="${icon}" alt="${isCorrect ? 'Correcto' : 'Incorrecto'}" class="result-icon">`);
-
-                                // Si es incorrecta, marcar la opción correcta también
-                                if (!isCorrect) {
-
-                                    $(`input[name="question-${questionIndex}"][value="${correctAnswer}"]`)
-                                        .parent()
-                                        .append(`<img src="${iconOk}" alt="Correcto" class="result-icon">`);
-                                }
-
-                                const sclass = isCorrect ? 'correct' : 'incorrect';
 
                                 //limpiar clases
                                 $(`.question-page[data-page="${Math.floor(questionIndex / itemsPerPage)}" ] label`).removeClass('incorrect');
 
                                 // añarir classes para algunos stylos (4)
+                                const sclass = isCorrect ? 'correct' : 'incorrect';
                                 $(this).parent().addClass(sclass);
 
                                 const { correct, incorrect } = calculateResults(results, testData)
@@ -996,12 +1139,48 @@ class RafaxTests
                                 $(`${uniqueId} .result-container`).html(`<p> ${message} </p>`);
 
                             } else {
+
                                 $(`${uniqueId}-correct-count`).text(correct);
                                 $(`${uniqueId}-incorrect-count`).text(incorrect);
                                 $(`${uniqueId}-tottal-count`).text(totalQuestions);
                                 $(`${uniqueId}-time-count`).text($(`${uniqueId} #elapsed-time`).text());
 
                             }
+
+                            // Limpiar íconos existentes
+                            $(`.answer-option img`).remove();
+                            $(`.answer-option`).removeClass('correct incorrect');
+
+                            // Recorrer todas las preguntas y respuestas para añadir los iconos
+                            testData.forEach((question, questionIndex) => {
+                                const correctAnswer = question.correct;
+                                const selectedValue = results[questionIndex];
+
+                                // Añadir íconos a las respuestas seleccionadas
+                                if (selectedValue !== null) {
+                                    console.log(`pregunta numero :${questionIndex}`);
+
+                                    console.log(`Valor selccionados:${selectedValue}`);
+                                    console.log(`res acertada:${correctAnswer}`);
+                                    const isCorrect = selectedValue == correctAnswer;
+                                    const icon = isCorrect ? iconOk : iconFail;
+                                    console.log(`es corrceto:${isCorrect}`);
+
+                                    $(`input[name="question-${questionIndex}"][value="${selectedValue}"]`)
+                                        .parent()
+                                        .append(`<img src="${icon}" alt="${isCorrect ? 'Correcto' : 'Incorrecto'}" class="result-icon">`);
+
+                                    // Si es incorrecta, marcar la opción correcta también
+                                    if (!isCorrect) {
+                                        $(`input[name="question-${questionIndex}"][value="${correctAnswer}"]`)
+                                            .parent().addClass('correct')
+                                            .append(`<img src="${iconOk}" alt="Correcto" class="result-icon">`);
+                                    }
+
+                                    const sclass = isCorrect ? 'correct' : 'incorrect';
+                                    $(`input[name="question-${questionIndex}"][value="${selectedValue}"]`).parent().addClass(sclass);
+                                }
+                            });
 
                             $(`${uniqueId}-popup-back`).show();
                             stopWatch();
